@@ -1,0 +1,44 @@
+openapi: 3.0.1
+info:
+  title: CAMPPS Authentication API
+  description: This API handles user authentication for the CAMPPS application.
+  version: 1.0.0
+paths:
+  /auth:
+    post:
+      summary: Authenticate a user
+      requestBody:
+        description: User credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  idToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string

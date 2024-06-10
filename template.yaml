@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Resources:
+  CamppsAuthUserPool:
+    Type: 'AWS::Cognito::UserPool'
+    Properties:
+      UserPoolName: 'camps-auth-userpool'
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - AttributeName: 'email'
+          Required: true
+          Mutable: true
+        - AttributeName: 'name'
+          Required: true
+          Mutable: true
+
+  CamppsAuthUserPoolClient:
+    Type: 'AWS::Cognito::UserPoolClient'
+    Properties:
+      ClientName: 'camps-auth-client'
+      UserPoolId: !Ref CamppsAuthUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  CamppsAuthFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: app.handler
+      Runtime: python3.12
+      CodeUri: auth-function/
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CamppsAuthUserPool
+          CLIENT_ID: !Ref CamppsAuthUserPoolClient
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        AuthAPI:
+          Type: Api
+          Properties:
+            RestApiId:
+            !Ref CamppsAuthApiGateway
+            Path: /auth
+            Method: post
+
+  CamppsAuthApiGateway:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      StageName: !Ref AliasName
+      MethodSettings:
+        - LoggingLevel: !FindInMap [ Account, !Ref "AWS::AccountId", apiLogLevel ]
+          ResourcePath: '/*'
+          HttpMethod: '*'
+          DataTraceEnabled: true
+          MetricsEnabled: true
+      DefinitionBody:
+        Fn::Transform:
+          Name: 'AWS::Include'
+          Parameters:
+            Location: 'openapi.yaml'
+
+Outputs:
+  ApiUrl:
+    Description: "URL for the API"
+    Value: !Sub "https://${CamppsAuthApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+  UserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CamppsAuthUserPool
+  UserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CamppsAuthUserPoolClient
